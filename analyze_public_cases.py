@@ -68,10 +68,46 @@ def highlight_points(df):
     pattern_points = df[(decimals.isin([0.49, 0.99])) | ((df["total_receipts_amount"] >= 840) & (df["total_receipts_amount"] <= 860))]
     return pattern_points
 
+def check_duplicates(df):
+    # identical across all three inputs
+    dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
+    if dup_all.empty:
+        print("No exact duplicate input records found.")
+    else:
+        print("Duplicate records with all inputs equal:")
+        for key, grp in dup_all.groupby(["trip_duration_days", "miles_traveled", "total_receipts_amount"]):
+            print("Inputs:", key)
+            print(grp[["expected_output"]])
+            if grp["expected_output"].nunique() > 1:
+                print("Outputs differ!")
+            else:
+                print("Outputs identical.")
+
+    # duplicates on any pair of inputs
+    pairs = [
+        ("trip_duration_days", "miles_traveled"),
+        ("trip_duration_days", "total_receipts_amount"),
+        ("miles_traveled", "total_receipts_amount"),
+    ]
+    for cols in pairs:
+        dup = df[df.duplicated(list(cols), keep=False)]
+        if dup.empty:
+            continue
+        print(f"\nDuplicate records on {cols}:")
+        for key, grp in dup.groupby(list(cols)):
+            if len(grp) > 1:
+                print("Inputs:", key)
+                print(grp[["expected_output"]])
+                if grp["expected_output"].nunique() > 1:
+                    print("Outputs differ!")
+                else:
+                    print("Outputs identical.")
+
 
 def analyze():
     df = load_data()
     print(df.head())
+    check_duplicates(df)
 
     # Basic scatter plots
     sns.set(style="whitegrid")
@@ -94,6 +130,11 @@ def analyze():
     print(model_miles.summary())
 
     # Receipt subsets
+    df_low = df[df["total_receipts_amount"] <= 1200]
+    df_high = df[df["total_receipts_amount"] > 1200]
+
+    fig, ax = plt.subplots()
+    model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
     df_low = df[df["total_receipts_amount"] <= 1250]
     df_high = df[df["total_receipts_amount"] > 1250]
 
@@ -104,6 +145,7 @@ def analyze():
     print(model_low.summary())
 
     fig, ax = plt.subplots()
+    model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1200")
     model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1250")
     plt.savefig("receipts_high_regression.png")
     plt.close(fig)
@@ -122,6 +164,11 @@ def analyze():
     plt.close(fig)
 
     # Trip duration subsets
+    df_short = df[df["trip_duration_days"] <= 7]
+    df_long = df[df["trip_duration_days"] > 7]
+
+    fig, ax = plt.subplots()
+    model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
     df_short = df[df["trip_duration_days"] <= 8]
     df_long = df[df["trip_duration_days"] > 8]
 
@@ -132,6 +179,7 @@ def analyze():
     print(model_short.summary())
 
     fig, ax = plt.subplots()
+    model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >7")
     model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >8")
     plt.savefig("trip_long_regression.png")
     plt.close(fig)
