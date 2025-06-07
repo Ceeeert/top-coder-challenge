@@ -63,6 +63,36 @@ def logistic_fit(df, xcol, ycol):
     return params, r2
 
 
+highlight_rules = {
+    1: {"threshold": 800},
+    2: {"threshold": 900},
+    3: {"threshold": 1000},
+    4: {"threshold": 1100},
+    5: {"threshold": 1200},
+    6: {"threshold": 1250},
+    7: {"intercept": 750, "slope": 1.0},
+    8: {"intercept": 1000, "slope": 0.5},
+    9: {"intercept": 1100, "slope": 0.5},
+    10: {"intercept": 1200, "slope": 0.5},
+    11: {"intercept": 1300, "slope": 0.5},
+    12: {"intercept": 1400, "slope": 0.5},
+    13: {"intercept": 1500, "slope": 0.5},
+    14: {"intercept": 1500, "slope": 0.5},
+}
+
+def highlight_points(df):
+    """Return subset of df that should be highlighted based on day-specific receipt rules."""
+    if df.empty:
+        return df
+    day = df["trip_duration_days"].iloc[0]
+    rule = highlight_rules.get(day)
+    if rule is None:
+        return df.iloc[0:0]
+    if "threshold" in rule:
+        cond = df["total_receipts_amount"] > rule["threshold"]
+    else:
+        cond = df["total_receipts_amount"] > rule["intercept"] + rule["slope"] * df["miles_traveled"]
+    return df[cond]
 def highlight_points(df):
     decimals = (df["total_receipts_amount"] % 1).round(2)
     pattern_points = df[(decimals.isin([0.49, 0.99])) | ((df["total_receipts_amount"] >= 840) & (df["total_receipts_amount"] <= 860))]
@@ -95,6 +125,8 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             axes[1].set_title(f"{label} Receipts vs Output")
             highlight = highlight_points(part_df)
             if not highlight.empty:
+                axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="highlight")
+                axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="highlight")
                 axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
                 axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
                 axes[0].legend()
@@ -284,6 +316,8 @@ def analyze():
         axes[1].set_title(f"{day} days: Receipts vs Output")
         highlight = highlight_points(subset)
         if not highlight.empty:
+            axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="highlight")
+            axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="highlight")
             axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
             axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
             axes[0].legend()
@@ -315,7 +349,6 @@ def analyze():
 
     # Output CSV tables for the first three days to inspect split models
     output_day_tables(df, {1: 800, 2: 900, 3: 1000})
-
 
     # Additional simple analysis: correlation matrix
     corr = df.corr(numeric_only=True)
