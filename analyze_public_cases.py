@@ -93,6 +93,10 @@ def highlight_points(df):
     else:
         cond = df["total_receipts_amount"] > rule["intercept"] + rule["slope"] * df["miles_traveled"]
     return df[cond]
+def highlight_points(df):
+    decimals = (df["total_receipts_amount"] % 1).round(2)
+    pattern_points = df[(decimals.isin([0.49, 0.99])) | ((df["total_receipts_amount"] >= 840) & (df["total_receipts_amount"] <= 860))]
+    return pattern_points
 
 
 def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
@@ -123,6 +127,8 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             if not highlight.empty:
                 axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="highlight")
                 axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="highlight")
+                axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
+                axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
                 axes[0].legend()
                 axes[1].legend()
             fig.tight_layout()
@@ -152,6 +158,7 @@ def output_day_tables(df, thresholds):
         high.to_csv(f"day_{day}_gt_{thresh}.csv", index=False)
         print(f"Day {day} <= {thresh}: {len(low)} records")
         print(f"Day {day} > {thresh}: {len(high)} records")
+
 
 def check_duplicates(df):
     # identical across all three inputs
@@ -217,6 +224,7 @@ def analyze():
     plt.savefig("duration_vs_inputs.png")
     plt.close(fig)
 
+
     # Linear regression: miles_traveled vs expected_output
     fig, ax = plt.subplots()
     model_miles = scatter_with_regression(df, "miles_traveled", "expected_output", ax=ax, title="Miles vs Output")
@@ -230,6 +238,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
+
     plt.savefig("receipts_low_regression.png")
     plt.close(fig)
     print(model_low.summary())
@@ -286,6 +295,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
+
     plt.savefig("trip_short_regression.png")
     plt.close(fig)
     print(model_short.summary())
@@ -308,6 +318,8 @@ def analyze():
         if not highlight.empty:
             axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="highlight")
             axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="highlight")
+            axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
+            axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
             axes[0].legend()
             axes[1].legend()
         fig.tight_layout()
