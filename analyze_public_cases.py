@@ -177,6 +177,34 @@ def analyze():
 
     # Receipt subsets
     df_low = df[df["total_receipts_amount"] <= 1200]
+    # New receipt split at $1500 to check for possible penalties
+    df_low_1500 = df[df["total_receipts_amount"] <= 1500]
+    df_high_1500 = df[df["total_receipts_amount"] > 1500]
+
+    fig, ax = plt.subplots()
+    model_low_1500 = scatter_with_regression(
+        df_low_1500,
+        "total_receipts_amount",
+        "expected_output",
+        ax=ax,
+        title="Receipts <=1500",
+    )
+    plt.savefig("receipts_low1500_regression.png")
+    plt.close(fig)
+    print(model_low_1500.summary())
+
+    fig, ax = plt.subplots()
+    model_high_1500 = scatter_with_regression(
+        df_high_1500,
+        "total_receipts_amount",
+        "expected_output",
+        ax=ax,
+        title="Receipts >1500",
+    )
+    plt.savefig("receipts_high1500_regression.png")
+    plt.close(fig)
+    print(model_high_1500.summary())
+
     df_high = df[df["total_receipts_amount"] > 1200]
 
     fig, ax = plt.subplots()
