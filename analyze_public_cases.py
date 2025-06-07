@@ -135,18 +135,13 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
-    df_low = df[df["total_receipts_amount"] <= 1250]
-    df_high = df[df["total_receipts_amount"] > 1250]
 
-    fig, ax = plt.subplots()
-    model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1250")
     plt.savefig("receipts_low_regression.png")
     plt.close(fig)
     print(model_low.summary())
 
     fig, ax = plt.subplots()
     model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1200")
-    model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1250")
     plt.savefig("receipts_high_regression.png")
     plt.close(fig)
     print(model_high.summary())
@@ -169,18 +164,13 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
-    df_short = df[df["trip_duration_days"] <= 8]
-    df_long = df[df["trip_duration_days"] > 8]
 
-    fig, ax = plt.subplots()
-    model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=8")
     plt.savefig("trip_short_regression.png")
     plt.close(fig)
     print(model_short.summary())
 
     fig, ax = plt.subplots()
     model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >7")
-    model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >8")
     plt.savefig("trip_long_regression.png")
     plt.close(fig)
     print(model_long.summary())
