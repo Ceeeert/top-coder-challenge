@@ -113,7 +113,6 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             plt.savefig(f"day_{day}_{suffix}_empty.png")
             plt.close(fig)
 
-
 def check_duplicates(df):
     # identical across all three inputs
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
@@ -203,6 +202,34 @@ def analyze():
     ax.set_title("Logistic Receipts vs Output")
     plt.savefig("logistic_receipts.png")
     plt.close(fig)
+
+    # New receipt split at $1500 to check for possible penalties
+    df_low_1500 = df[df["total_receipts_amount"] <= 1500]
+    df_high_1500 = df[df["total_receipts_amount"] > 1500]
+
+    fig, ax = plt.subplots()
+    model_low_1500 = scatter_with_regression(
+        df_low_1500,
+        "total_receipts_amount",
+        "expected_output",
+        ax=ax,
+        title="Receipts <=1500",
+    )
+    plt.savefig("receipts_low1500_regression.png")
+    plt.close(fig)
+    print(model_low_1500.summary())
+
+    fig, ax = plt.subplots()
+    model_high_1500 = scatter_with_regression(
+        df_high_1500,
+        "total_receipts_amount",
+        "expected_output",
+        ax=ax,
+        title="Receipts >1500",
+    )
+    plt.savefig("receipts_high1500_regression.png")
+    plt.close(fig)
+    print(model_high_1500.summary())
 
     # Trip duration subsets
     df_short = df[df["trip_duration_days"] <= 7]
