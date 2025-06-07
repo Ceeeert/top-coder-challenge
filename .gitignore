@@ -1,0 +1,5 @@
+*.png
+analysis.log
+correlations.csv
+__pycache__/
+*.pyc
