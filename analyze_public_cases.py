@@ -68,6 +68,51 @@ def highlight_points(df):
     pattern_points = df[(decimals.isin([0.49, 0.99])) | ((df["total_receipts_amount"] >= 840) & (df["total_receipts_amount"] <= 860))]
     return pattern_points
 
+
+def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
+    """Split data for a given day based on expected output or a line and plot."""
+    subset = df[df["trip_duration_days"] == day]
+    if subset.empty:
+        return
+
+    if threshold is not None:
+        cond = subset["expected_output"] <= threshold
+        low_label = f"{day}d <={threshold}"
+        high_label = f"{day}d >{threshold}"
+    else:
+        line_vals = intercept + slope * subset["miles_traveled"]
+        cond = subset["expected_output"] <= line_vals
+        low_label = f"{day}d below {intercept}+{slope}x"
+        high_label = f"{day}d above {intercept}+{slope}x"
+
+    splits = [(subset[cond], low_label, "low"), (subset[~cond], high_label, "high")]
+
+    for part_df, label, suffix in splits:
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+        if not part_df.empty:
+            model = scatter_with_regression(part_df, "miles_traveled", "expected_output", ax=axes[0], title=f"{label} Miles vs Output")
+            sns.scatterplot(data=part_df, x="total_receipts_amount", y="expected_output", ax=axes[1])
+            axes[1].set_title(f"{label} Receipts vs Output")
+            highlight = highlight_points(part_df)
+            if not highlight.empty:
+                axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
+                axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
+                axes[0].legend()
+                axes[1].legend()
+            fig.tight_layout()
+            plt.savefig(f"day_{day}_{suffix}.png")
+            plt.close(fig)
+            if len(part_df) >= 2:
+                print(model.summary())
+            else:
+                print(f"Not enough data for regression {label}")
+        else:
+            axes[0].set_title(f"No data for {label}")
+            axes[1].axis('off')
+            fig.tight_layout()
+            plt.savefig(f"day_{day}_{suffix}_empty.png")
+            plt.close(fig)
+
 def check_duplicates(df):
     # identical across all three inputs
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
@@ -168,6 +213,27 @@ def analyze():
     df_long = df[df["trip_duration_days"] > 7]
 
     fig, ax = plt.subplots()
+    # Further splits for each day based on expected output thresholds or lines
+    day_params = {
+        1: {"threshold": 800},
+        2: {"threshold": 900},
+        3: {"threshold": 1000},
+        4: {"threshold": 1100},
+        5: {"threshold": 1200},
+        6: {"threshold": 1250},
+        7: {"intercept": 750, "slope": 1.0},
+        8: {"intercept": 1000, "slope": 0.5},
+        9: {"intercept": 1100, "slope": 0.5},
+        10: {"intercept": 1200, "slope": 0.5},
+        11: {"intercept": 1300, "slope": 0.5},
+        12: {"intercept": 1400, "slope": 0.5},
+        13: {"intercept": 1500, "slope": 0.5},
+        14: {"intercept": 1500, "slope": 0.5},
+    }
+
+    for day, params in day_params.items():
+        analyze_day_split(df, day, **params)
+
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
     df_short = df[df["trip_duration_days"] <= 8]
     df_long = df[df["trip_duration_days"] > 8]
