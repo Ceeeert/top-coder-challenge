@@ -127,6 +127,7 @@ def output_day_tables(df, thresholds):
         print(f"Day {day} <= {thresh}: {len(low)} records")
         print(f"Day {day} > {thresh}: {len(high)} records")
 
+
 def check_duplicates(df):
     # identical across all three inputs
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
@@ -191,6 +192,7 @@ def analyze():
     plt.savefig("duration_vs_inputs.png")
     plt.close(fig)
 
+
     # Linear regression: miles_traveled vs expected_output
     fig, ax = plt.subplots()
     model_miles = scatter_with_regression(df, "miles_traveled", "expected_output", ax=ax, title="Miles vs Output")
@@ -204,6 +206,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
+
     plt.savefig("receipts_low_regression.png")
     plt.close(fig)
     print(model_low.summary())
@@ -260,6 +263,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
+
     plt.savefig("trip_short_regression.png")
     plt.close(fig)
     print(model_short.summary())
@@ -311,6 +315,7 @@ def analyze():
 
     # Output CSV tables for the first three days to inspect split models
     output_day_tables(df, {1: 800, 2: 900, 3: 1000})
+
 
     # Additional simple analysis: correlation matrix
     corr = df.corr(numeric_only=True)
