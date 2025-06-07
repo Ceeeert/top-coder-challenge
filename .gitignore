@@ -1,5 +1,7 @@
 *.png
 analysis.log
 correlations.csv
+day_*_*.csv
+eval.log
 __pycache__/
 *.pyc
