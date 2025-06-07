@@ -113,6 +113,20 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             plt.savefig(f"day_{day}_{suffix}_empty.png")
             plt.close(fig)
 
+
+def output_day_tables(df, thresholds):
+    """Save CSV tables for day-based expected output splits."""
+    for day, thresh in thresholds.items():
+        day_df = df[df["trip_duration_days"] == day]
+        if day_df.empty:
+            continue
+        low = day_df[day_df["expected_output"] <= thresh]
+        high = day_df[day_df["expected_output"] > thresh]
+        low.to_csv(f"day_{day}_le_{thresh}.csv", index=False)
+        high.to_csv(f"day_{day}_gt_{thresh}.csv", index=False)
+        print(f"Day {day} <= {thresh}: {len(low)} records")
+        print(f"Day {day} > {thresh}: {len(high)} records")
+
 def check_duplicates(df):
     # identical across all three inputs
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
@@ -165,6 +179,16 @@ def analyze():
     axes[2].set_title("Receipts vs Output")
     fig.tight_layout()
     plt.savefig("basic_scatter.png")
+    plt.close(fig)
+
+    # Scatter plots of trip duration against other inputs
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    sns.scatterplot(data=df, x="trip_duration_days", y="miles_traveled", ax=axes[0])
+    axes[0].set_title("Trip Days vs Miles")
+    sns.scatterplot(data=df, x="trip_duration_days", y="total_receipts_amount", ax=axes[1])
+    axes[1].set_title("Trip Days vs Receipts")
+    fig.tight_layout()
+    plt.savefig("duration_vs_inputs.png")
     plt.close(fig)
 
     # Linear regression: miles_traveled vs expected_output
@@ -260,6 +284,9 @@ def analyze():
         if not highlight.empty:
             axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="pattern")
             axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="pattern")
+    # Output CSV tables for the first three days to inspect split models
+    output_day_tables(df, {1: 800, 2: 900, 3: 1000})
+
             axes[0].legend()
             axes[1].legend()
         fig.tight_layout()
