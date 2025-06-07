@@ -26,24 +26,35 @@ def load_data(path="public_cases.json"):
 
 
 def scatter_with_regression(df, x, y, ax=None, title=None):
+    """Plot scatter and linear regression line with metrics."""
     if ax is None:
         ax = plt.gca()
     sns.scatterplot(data=df, x=x, y=y, ax=ax)
-    # Fit linear regression
-    model = smf.ols(f"{y} ~ {x}", data=df).fit()
-    xs = np.linspace(df[x].min(), df[x].max(), 100)
-    ys = model.predict(pd.DataFrame({x: xs}))
-    ax.plot(xs, ys, color="red")
-    if len(model.params) > 1:
+
+    if len(df) >= 2:
+        model = smf.ols(f"{y} ~ {x}", data=df).fit()
+        xs = np.linspace(df[x].min(), df[x].max(), 100)
+        ys = model.predict(pd.DataFrame({x: xs}))
+        ax.plot(xs, ys, color="red")
+
         intercept = model.params.get("Intercept", model.params.iloc[0])
-        slope = model.params.get(x, model.params.iloc[1])
+        slope = model.params.get(x, model.params.iloc[1] if len(model.params) > 1 else 0)
+        r2 = model.rsquared
+        mae = np.mean(np.abs(model.resid))
         eq = f"y={slope:.2f}x+{intercept:.2f}"
+        metrics = f"R^2={r2:.2f}, MAE={mae:.2f}"
+
+        if title:
+            ax.set_title(f"{title}\n{eq}\n{metrics}")
+        else:
+            ax.set_title(f"{eq}\n{metrics}")
     else:
-        eq = ""
-    if title:
-        ax.set_title(title + "\n" + eq)
-    else:
-        ax.set_title(eq)
+        model = None
+        if title:
+            ax.set_title(f"{title}\nNot enough data for regression")
+        else:
+            ax.set_title("Not enough data for regression")
+
     return model
 
 
@@ -116,7 +127,13 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
     for part_df, label, suffix in splits:
         fig, axes = plt.subplots(1, 2, figsize=(10, 4))
         if not part_df.empty:
-            model = scatter_with_regression(part_df, "miles_traveled", "expected_output", ax=axes[0], title=f"{label} Miles vs Output")
+            model = scatter_with_regression(
+                part_df,
+                "miles_traveled",
+                "expected_output",
+                ax=axes[0],
+                title=f"{label} Miles vs Output",
+            )
             sns.scatterplot(data=part_df, x="total_receipts_amount", y="expected_output", ax=axes[1])
             axes[1].set_title(f"{label} Receipts vs Output")
             highlight = highlight_points(part_df)
@@ -126,7 +143,10 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             fig.tight_layout()
             plt.savefig(f"day_{day}_{suffix}.png")
             plt.close(fig)
-            if len(part_df) >= 2:
+            if len(part_df) >= 2 and model is not None:
+                r2 = model.rsquared
+                mae = np.mean(np.abs(model.resid))
+                print(f"{label} R^2: {r2:.3f} MAE: {mae:.2f}")
                 print(model.summary())
             else:
                 print(f"Not enough data for regression {label}")
@@ -185,7 +205,13 @@ def analyze_duration_receipt_groups(df):
             suffix = f"{label_prefix}_{tag}{thresh}"
             fig, axes = plt.subplots(1, 2, figsize=(10, 4))
             if not part_df.empty:
-                model = scatter_with_regression(part_df, "miles_traveled", "expected_output", ax=axes[0], title=f"{suffix} Miles vs Output")
+                model = scatter_with_regression(
+                    part_df,
+                    "miles_traveled",
+                    "expected_output",
+                    ax=axes[0],
+                    title=f"{suffix} Miles vs Output",
+                )
                 sns.scatterplot(data=part_df, x="total_receipts_amount", y="expected_output", ax=axes[1])
                 axes[1].set_title(f"{suffix} Receipts vs Output")
                 highlight = highlight_points(part_df)
@@ -195,7 +221,10 @@ def analyze_duration_receipt_groups(df):
                 fig.tight_layout()
                 plt.savefig(f"duration_split_{suffix}.png")
                 plt.close(fig)
-                if len(part_df) >= 2:
+                if len(part_df) >= 2 and model is not None:
+                    r2 = model.rsquared
+                    mae = np.mean(np.abs(model.resid))
+                    print(f"{suffix} R^2: {r2:.3f} MAE: {mae:.2f}")
                     print(model.summary())
                 else:
                     print(f"Not enough data for regression {suffix}")
