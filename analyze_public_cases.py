@@ -99,8 +99,75 @@ def highlight_points(df):
     return pattern_points
 
 
-def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
-    """Split data for a given day based on expected output or a line and plot."""
+def highlight_duration_receipt_groups(df, axes):
+    """Overlay duration/receipt-based splits on existing scatter axes."""
+    groups = [
+        ((1, 5), 1000),
+        ((6, 10), 1200),
+        ((10, None), 1500),
+    ]
+    colors = iter(sns.color_palette("tab10", n_colors=6))
+    for (start, end), thresh in groups:
+        col_le = next(colors)
+        col_gt = next(colors)
+        if end is None:
+            subset = df[df["trip_duration_days"] >= start]
+            label_prefix = f"{start}+d"
+        else:
+            subset = df[(df["trip_duration_days"] >= start) & (df["trip_duration_days"] <= end)]
+            label_prefix = f"{start}-{end}d"
+        le_df = subset[subset["total_receipts_amount"] <= thresh]
+        gt_df = subset[subset["total_receipts_amount"] > thresh]
+        axes[0].scatter(le_df["trip_duration_days"], le_df["expected_output"], marker="x", color=col_le, label=f"{label_prefix} <= {thresh}")
+        axes[0].scatter(gt_df["trip_duration_days"], gt_df["expected_output"], marker="x", color=col_gt, label=f"{label_prefix} > {thresh}")
+        axes[1].scatter(le_df["miles_traveled"], le_df["expected_output"], marker="x", color=col_le)
+        axes[1].scatter(gt_df["miles_traveled"], gt_df["expected_output"], marker="x", color=col_gt)
+        axes[2].scatter(le_df["total_receipts_amount"], le_df["expected_output"], marker="x", color=col_le)
+        axes[2].scatter(gt_df["total_receipts_amount"], gt_df["expected_output"], marker="x", color=col_gt)
+
+
+def analyze_duration_receipt_groups(df):
+    """Create scatter/regression plots for duration/receipt-based splits."""
+    configs = [
+        ((1, 5), 1000),
+        ((6, 10), 1200),
+        ((10, None), 1500),
+    ]
+    for (start, end), thresh in configs:
+        if end is None:
+            range_df = df[df["trip_duration_days"] >= start]
+            label_prefix = f"{start}+d"
+        else:
+            range_df = df[(df["trip_duration_days"] >= start) & (df["trip_duration_days"] <= end)]
+            label_prefix = f"{start}-{end}d"
+        df_le = range_df[range_df["total_receipts_amount"] <= thresh]
+        df_gt = range_df[range_df["total_receipts_amount"] > thresh]
+        for part_df, tag in [(df_le, "le"), (df_gt, "gt")]:
+            suffix = f"{label_prefix}_{tag}{thresh}"
+            fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+            if not part_df.empty:
+                model = scatter_with_regression(part_df, "miles_traveled", "expected_output", ax=axes[0], title=f"{suffix} Miles vs Output")
+                sns.scatterplot(data=part_df, x="total_receipts_amount", y="expected_output", ax=axes[1])
+                axes[1].set_title(f"{suffix} Receipts vs Output")
+                highlight = highlight_points(part_df)
+                if not highlight.empty:
+                    axes[0].scatter(highlight["miles_traveled"], highlight["expected_output"], color="orange", label="highlight")
+                    axes[1].scatter(highlight["total_receipts_amount"], highlight["expected_output"], color="orange", label="highlight")
+                fig.tight_layout()
+                plt.savefig(f"duration_split_{suffix}.png")
+                plt.close(fig)
+                if len(part_df) >= 2:
+                    print(model.summary())
+                else:
+                    print(f"Not enough data for regression {suffix}")
+            else:
+                axes[0].set_title("No data")
+                axes[1].axis('off')
+                fig.tight_layout()
+                plt.savefig(f"duration_split_{suffix}_empty.png")
+                plt.close(fig)
+
+
     subset = df[df["trip_duration_days"] == day]
     if subset.empty:
         return
@@ -178,6 +245,11 @@ def check_duplicates(df):
     # duplicates on any pair of inputs
     pairs = [
         ("trip_duration_days", "miles_traveled"),
+    highlight_duration_receipt_groups(df, axes)
+    axes[0].legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize="small")
+    axes[1].legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize="small")
+    axes[2].legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize="small")
+    analyze_duration_receipt_groups(df)
         ("trip_duration_days", "total_receipts_amount"),
         ("miles_traveled", "total_receipts_amount"),
     ]
@@ -283,9 +355,7 @@ def analyze():
         "total_receipts_amount",
         "expected_output",
         ax=ax,
-        title="Receipts >1500",
-    )
-    plt.savefig("receipts_high1500_regression.png")
+    analyze()
     plt.close(fig)
     print(model_high_1500.summary())
 
