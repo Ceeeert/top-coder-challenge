@@ -7,6 +7,8 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.optimize import curve_fit
 
+import itertools
+
 
 def load_data(path="public_cases.json"):
     with open(path) as f:
@@ -69,21 +71,33 @@ def highlight_points(df):
     return pattern_points
 
 def check_duplicates(df):
-    # identical across all three inputs
+    def print_pairwise_differences(group):
+        records = group.to_dict("records")
+        for rec1, rec2 in itertools.combinations(records, 2):
+            print("\n--- Duplicate Pair ---")
+            print("Record 1:", rec1)
+            print("Record 2:", rec2)
+            print("Differences:")
+            for key in ["trip_duration_days", "miles_traveled", "total_receipts_amount", "expected_output"]:
+                diff = rec1[key] - rec2[key]
+                print(f"  {key}: {diff:.4f} (Record 1 - Record 2)")
+
+    # Check full triplet duplicates
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
     if dup_all.empty:
         print("No exact duplicate input records found.")
     else:
         print("Duplicate records with all inputs equal:")
         for key, grp in dup_all.groupby(["trip_duration_days", "miles_traveled", "total_receipts_amount"]):
-            print("Inputs:", key)
+            print("\nInputs:", key)
             print(grp[["expected_output"]])
             if grp["expected_output"].nunique() > 1:
                 print("Outputs differ!")
             else:
                 print("Outputs identical.")
+            print_pairwise_differences(grp)
 
-    # duplicates on any pair of inputs
+    # Check duplicates on each pair of features
     pairs = [
         ("trip_duration_days", "miles_traveled"),
         ("trip_duration_days", "total_receipts_amount"),
@@ -96,12 +110,13 @@ def check_duplicates(df):
         print(f"\nDuplicate records on {cols}:")
         for key, grp in dup.groupby(list(cols)):
             if len(grp) > 1:
-                print("Inputs:", key)
-                print(grp[["expected_output"]])
+                print("\nInputs:", key)
+                print(grp[["trip_duration_days", "miles_traveled", "total_receipts_amount", "expected_output"]])
                 if grp["expected_output"].nunique() > 1:
                     print("Outputs differ!")
                 else:
                     print("Outputs identical.")
+                print_pairwise_differences(grp)
 
 
 def analyze():
@@ -135,18 +150,13 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
-    df_low = df[df["total_receipts_amount"] <= 1250]
-    df_high = df[df["total_receipts_amount"] > 1250]
 
-    fig, ax = plt.subplots()
-    model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1250")
     plt.savefig("receipts_low_regression.png")
     plt.close(fig)
     print(model_low.summary())
 
     fig, ax = plt.subplots()
     model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1200")
-    model_high = scatter_with_regression(df_high, "total_receipts_amount", "expected_output", ax=ax, title="Receipts >1250")
     plt.savefig("receipts_high_regression.png")
     plt.close(fig)
     print(model_high.summary())
@@ -169,18 +179,13 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
-    df_short = df[df["trip_duration_days"] <= 8]
-    df_long = df[df["trip_duration_days"] > 8]
 
-    fig, ax = plt.subplots()
-    model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=8")
     plt.savefig("trip_short_regression.png")
     plt.close(fig)
     print(model_short.summary())
 
     fig, ax = plt.subplots()
     model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >7")
-    model_long = scatter_with_regression(df_long, "trip_duration_days", "expected_output", ax=ax, title="Trip Days >8")
     plt.savefig("trip_long_regression.png")
     plt.close(fig)
     print(model_long.summary())
