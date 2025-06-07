@@ -113,6 +113,7 @@ def analyze_day_split(df, day, threshold=None, intercept=None, slope=None):
             plt.savefig(f"day_{day}_{suffix}_empty.png")
             plt.close(fig)
 
+
 def check_duplicates(df):
     # identical across all three inputs
     dup_all = df[df.duplicated(["trip_duration_days", "miles_traveled", "total_receipts_amount"], keep=False)]
@@ -180,6 +181,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_low = scatter_with_regression(df_low, "total_receipts_amount", "expected_output", ax=ax, title="Receipts <=1200")
+
     plt.savefig("receipts_low_regression.png")
     plt.close(fig)
     print(model_low.summary())
@@ -208,6 +210,7 @@ def analyze():
 
     fig, ax = plt.subplots()
     model_short = scatter_with_regression(df_short, "trip_duration_days", "expected_output", ax=ax, title="Trip Days <=7")
+
     plt.savefig("trip_short_regression.png")
     plt.close(fig)
     print(model_short.summary())
@@ -256,6 +259,7 @@ def analyze():
 
     for day, params in day_params.items():
         analyze_day_split(df, day, **params)
+
 
     # Additional simple analysis: correlation matrix
     corr = df.corr(numeric_only=True)
